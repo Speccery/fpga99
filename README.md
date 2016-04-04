@@ -1,6 +1,7 @@
 # fpga99
 
 Imported to github by Erik Piehl (C) 2016-04-04.
+This work is licensed under LGPL, please see the LICENSE file.
 
 This is an FPGA design project for my TMS9995 breadboard project. It is a VHDL design, done in ISE 14.7 from Xilinx. The free version of the Xilinx tool suite is sufficient for synthesis; it's what I used.
 
