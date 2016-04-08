@@ -1,0 +1,156 @@
+HEX
+FORGET SEL
+: SEL FF32 C! ;
+: W FF30 C! ;
+: D FF30 C@ ;
+: ST FF30 C@ . FF32 C@ . FF34 C@ . CR ;
+
+: DUMMY 1 SEL 10 0 DO FF W LOOP ;
+
+: RESP 10 BEGIN
+ ." x"
+ 1 - DUP 0=
+ FF W
+ D FF = 0=
+ OR
+ UNTIL
+ .
+ ." D is " D . CR
+;
+
+: SD_IDLE 0 SEL
+FF W
+40 W
+0 W 0 W 0 W 0 W
+95 W RESP ;
+
+: CMD_APP
+FF W
+77 W
+0 W 0 W 0 W 0 W
+( FF W ) 
+1 W RESP ;
+
+: CMD_SD_SEND_OP_COND
+FF W
+69 W
+0 W 0 W 0 W 0 W
+( FF W ) 
+1 W RESP ;
+
+
+
+DUMMY
+SD_IDLE
+CMD_APP
+CMD_SD_SEND_OP_COND
+
+
+1 SEL
+
+( read block )
+
+: CMD_READ_SINGLE_BLOCK ( bk --- )
+0 SEL
+FF W
+51 W
+0 W 0 W 0 W W
+FF W 
+RESP
+;
+
+: RD CMD_READ_SINGLE_BLOCK ;
+
+: WAITD BEGIN FF W D DUP . FE = UNTIL ;
+
+( STOP HERE )
+
+: CMD_SET_BLOCKLEN
+FF W
+50 W
+0 W 0 W 1 W 0 W
+FF W RESP
+;
+
+( --------------------------- )
+( FIRST WORKING RUN )
+FF W
+RESP
+; ok:
+ ok:
+ ok:
+: RD CMD_READ_SINGLE_BLOCK ; : ?  Msg # 0
+: RD CMD_READ_SINGLE_BLOCK ; ok:
+ ok:
+CMD_APP xF D is 0
+ok:
+CMD_SD_SEND_OP_COND xF D is 0
+ok:
+SD_IDLE xxE D is 1
+ok:
+CMD_APP xxE D is 1
+ok:
+CMD_SD_SEND_OP_COND xxE D is 1
+ok:
+CMD_APP xxE D is 1
+ok:
+CMD_SD_SEND_OP_COND xxE D is 0
+ok:
+1 SEL 0 SEL ok:
+0 RD xxE D is 0
+ok:
+FF W ST FF 0 80
+ok:
+FF W ST FF 0 80
+ok:
+FF W ST FE 0 80
+ok:
+: KKK 200 0 DO FF W D . LOOP ; ok:
+KKK 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ( 26 ) 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ( 260 )
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ( 260 + 7 *26 = 442 )
+0 0 0 0 0 2 A 0 6 3B FB BB 87 0 0 0 79 CF 3A 0 0 0  ( 1ST NONZERO AT 447 )
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 55 AA ok
+
+( DETACHED THE BOARD, TRYING AGAIN FROM SCRATCH )
+DUMMY ok:
+SD_IDLE xF D is 7F
+ok:
+SD_IDLE xxE D is 1
+ok:
+CMD_APP xxE D is 1
+ok:
+CMD_SD_SEND_OP_COND xxE D is 1
+ok:
+CMD_APP xxE D is 1
+ok:
+CMD_SD_SEND_OP_COND xxE D is 0
+
+1 SEL 0 SEL ok:
+0 RD xxE D is 0
+ok:
+FF W ST FF 0 80
+ok:
+FF W ST FF 0 80
+ok:
+FF W ST FE 0 80
+ok:
+KKK  ( SUCCESS AGAIN HERE !!! )
+
+
