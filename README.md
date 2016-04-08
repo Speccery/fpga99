@@ -3,6 +3,8 @@
 Imported to github by Erik Piehl (C) 2016-04-04.
 This work is licensed under LGPL, please see the LICENSE file.
 
+This is very much work in progress. Please also checkout the wiki as I've started to put information in there, including some pictures.
+
 This is an FPGA design project for my TMS9995 breadboard project. It is a VHDL design, done in ISE 14.7 from Xilinx. The free version of the Xilinx tool suite is sufficient for synthesis; it's what I used.
 
 I started to discuss the board under my alias "speccy" in Vintage computer forums.
@@ -10,6 +12,7 @@ http://www.vcfed.org/forum/showthread.php?15580-Powertran-Cortex/page88
 
 The design is based on Stuart Conner's TMS9995 computer, featured on his web site:
 http://www.avjd51.dsl.pipex.com/tms9995_breadboard/tms9995_breadboard.htm
+
 But instead of being a discrete logic implementation, here all glue logic and other functionality is contained in the FPGA.
 
 Below is what I wrote there, with some edits:
