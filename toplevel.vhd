@@ -21,9 +21,9 @@
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
---use IEEE.STD_LOGIC_ARITH.ALL;
---use IEEE.STD_LOGIC_UNSIGNED.ALL;
-use IEEE.numeric_std.all;
+-- use IEEE.STD_LOGIC_ARITH.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+use IEEE.NUMERIC_STD.ALL;
 
 
 library UNISIM;
@@ -64,6 +64,12 @@ entity toplevel is
 	n_NMI			: out std_logic;
 	IAQ			: in std_logic;
 
+-- SD card interface. DI and DO are from the viewpoint of the SD card interface.
+	n_SD_CS 		: out std_logic := '1';
+	SD_DI			: out std_logic;
+	SD_CLK		: out std_logic;
+	SD_DO 		: in  std_logic;
+
 -- MMU & other signals
 	n_RESET_OUT		: out std_logic;
 	RA				: out std_logic_vector(18 downto 12); -- 7 bits, let's not bring out the MSB A19
@@ -78,23 +84,32 @@ ARCHITECTURE toplevel_architecture OF toplevel IS
 	constant flagbas : std_logic_vector(15 downto 0) := x"0140";	-- Flagsel register in CRU address space
 	constant sel9902 : std_logic_vector(15 downto 0) := x"0000";	-- TMS9902 start in CRU address space
 	constant sel9901 : std_logic_vector(15 downto 0) := x"0040";
+	constant spibase : std_logic_vector(15 downto 0) := x"FF30";	-- SPI controller
 
 	signal reset 		  	: std_logic;
-	signal reset_delay  	: std_logic_vector(7 downto 0) := x"00";
+	signal reset_delay  	: std_logic_vector(15 downto 0) := x"0000";
 	signal protect 		: std_logic;
 	signal mapen			: std_logic;
 	signal n_romen			: std_logic;
 	signal selmmu        : std_logic := '0';
 	signal seltest       : std_logic := '0';
 	signal selflag       : std_logic := '0';
+	signal selspi			: std_logic;
 	signal n_romce1		: std_logic;
 	signal ckon				: std_logic;
 	signal ckoff			: std_logic;
 	signal lrex				: std_logic;
-	signal lrex_latched  : std_logic := '0';	-- lrex is pending
 	
 	signal nmi_sync		: std_logic_vector(2 downto 0);
 	signal iaq_sync		: std_logic_vector(3 downto 0);	-- Delay line to find rising edges of IAQ
+	
+	signal spi_clk_div	: unsigned(2 downto 0);				-- Clock divider for SPI, div 50MHz by 8
+	signal spi_bit_count : unsigned(3 downto 0);				-- SPI bit counter, 8 bits are always transferred
+	signal spi_shift_out : std_logic_vector(7 downto 0);	-- outgoing SPI data, changed before rising edge, MSB out
+	signal spi_shift_in  : std_logic_vector(7 downto 0);	-- incoming SPI data, sampled on "rising edge"
+
+	signal spi_state     : std_logic := '0';					-- 0 = idle, 1 = busy
+	signal spi_cs			: std_logic := '1';
 	
 	-- flag_reg:
 	--		bit 0 : n_romen - when zero, the first 32K of ROM overlay bottom 32K of address space
@@ -106,6 +121,8 @@ ARCHITECTURE toplevel_architecture OF toplevel IS
 	signal translated_addr : std_logic_vector(awidth-1 downto 0);
 
 	signal we_sync		: std_logic_vector(3 downto 0);	-- Delay line to sample and synchronize n_WE/n_CRUCLK 
+	
+	signal debug : std_logic_vector(7 downto 0);
 	
 begin
 	TX <= TX02;
@@ -151,8 +168,15 @@ begin
    -- selmmu is high when the FPGA's MMU is being accessed
    selmmu <= '1'  when abus(15 downto 4) = mmubase(15 downto 4) and n_memen = '0' else '0';
 	seltest <= '1' when abus(15 downto 4) = testbas(15 downto 4) and n_memen = '0' else '0';
+	selspi <= '1'  when abus(15 downto 4) = spibase(15 downto 4) and n_memen = '0' else '0';
+	
 	-- CRU peripherals inside the FPGA
 	selflag <= '1' when abus(15 downto 4) = flagbas(15 downto 4) and n_memen = '1' else '0'; 
+	
+	-- Driving of SPI out of the FPGA
+	SD_DI  <= spi_shift_out(7);
+	SD_CLK <= spi_clk_div(2);	-- MSB of the divider
+	n_SD_CS <= spi_cs;
 	
   -- put the MMU design here.
 	process (CLK50M, SW1)
@@ -161,17 +185,18 @@ begin
 			-- Process reset here.
 			n_reset_out <= '0';
 			ready <= '0';
-			reset_delay <= x"00";
+			reset_delay <= (others => '0');
 			flag_reg <= x"00";
 			we_sync <= (others => '0');
 			nmi_sync <= (others => '1');
 			iaq_sync <= (others => '0');
-			lrex_latched <= '0';
+			spi_state <= '0';
+			spi_cs <= '1';
 		elsif rising_edge(CLK50M) then
 			-- take care of reset, enable zero wait states
-			n_reset_out <= reset_delay(7); -- this does not work: reset'length-1
-			ready 		<= reset_delay(5);
-			reset_delay <= reset_delay(6 downto 0) & '1';
+			n_reset_out <= reset_delay(8); 
+			ready 		<= reset_delay(15);
+			reset_delay <= reset_delay(14 downto 0) & '1';
 		
 			-- write to MMU
 			if selmmu = '1' and n_we = '0' then
@@ -186,7 +211,6 @@ begin
 			
 			-- Work on NMI generation
 			if lrex = '1' then
-				-- lrex_latched <= '1';	-- Make lrex pending
 				nmi_sync(0) <= '0';
 			end if;
 			iaq_sync <= iaq_sync(2 downto 0) & IAQ; 	-- sample IAQ
@@ -194,8 +218,41 @@ begin
 				-- Let's see if this simple logic works. On each rising edge 
 				-- of IAQ nmi_sync shift register advances.
 				-- The bit shifted in is the pending lrex (actually it's inverse).
-				nmi_sync <= nmi_sync(1 downto 0) & '1'; -- not lrex_latched;
-				-- lrex_latched <= '0';
+				nmi_sync <= nmi_sync(1 downto 0) & '1'; 
+			end if;
+			
+			---------------------------------
+			-- SPI interface
+			---------------------------------
+			if spi_state = '1' then
+				spi_clk_div <= unsigned(spi_clk_div) + 1;
+				if spi_clk_div = "011" then
+					-- On next 50MHz clock the SPI clock becomes high, i.e. when the following
+					-- asignments occur
+					spi_shift_in <= spi_shift_in(6 downto 0) & SD_DO;
+					spi_bit_count <= spi_bit_count + 1;
+				end if;
+				if spi_clk_div = "111" then
+					spi_shift_out <= spi_shift_out(6 downto 0) & '1';
+					if spi_bit_count = x"8" then
+						-- Transfer is done! Yippee!
+						spi_state <= '0';			-- No more busy
+						spi_clk_div <= "000";	-- This may be redundant, but ensures SPI clock out is low.
+					end if;
+				end if;
+			end if;
+			
+			-- Write to SPI port.
+			if selspi = '1' and we_sync = "0011" and spi_state = '0' and abus(3 downto 0) = "0000" then
+				spi_state <= '1';
+				spi_clk_div <= "000";
+				spi_bit_count <= (others => '0');
+				spi_shift_out <= dbus(7 downto 0);
+			end if;
+			
+			if selspi = '1' and we_sync = "0011" and abus(3 downto 0) = "0010" then
+				-- setup chip select
+				spi_cs <= dbus(0);
 			end if;
 			
 		end if;
@@ -205,8 +262,16 @@ begin
 		regs(to_integer(unsigned(abus(15 downto 12)))) when mapen = '1' and selmmu = '0'
 		else "0000" & abus(15 downto 12);
 	ra(18 downto 12) <= translated_addr(6 downto 0);
+	
+	debug <= std_logic_vector(spi_bit_count & '0' & spi_clk_div);
+	
 	dbus <=  
 		regs(to_integer(unsigned(abus(3 downto 0)))) when n_DBIN = '0' and selmmu = '1'
+		else spi_shift_in when n_DBIN = '0' and selspi = '1' and abus(3 downto 0) = "0000"
+		-- spi status register
+		else "000000" & spi_state & spi_cs when n_DBIN = '0' and selspi = '1' and abus(3 downto 0) = "0010"
+		-- spi debug register
+		else debug when n_DBIN = '0' and selspi = '1' and abus(3 downto 0) = "0100"
 		else x"5A" when n_DBIN = '0' and seltest = '1'
 		else "ZZZZZZZZ";
   

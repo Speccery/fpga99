@@ -1,9 +1,9 @@
 PROMGEN: Xilinx Prom Generator P.20131013
 Copyright (c) 1995-2013 Xilinx, Inc.  All rights reserved.
 
-promgen -w -p mcs -c FF -o "C:\Users\Erik Piehl\Dropbox\Omat\trunk\projects\xilinx\fpga99\//spi-rom" -s 8192 -u 0000 "C:/Users/Erik Piehl/Dropbox/Omat/trunk/projects/xilinx/fpga99/toplevel.bit" -spi 
+promgen -w -p mcs -c FF -o C:\fpga\//spi-rom -s 8192 -u 0 C:/fpga/toplevel.bit -spi 
 
-PROM C:\Users\Erik Piehl\Dropbox\Omat\trunk\projects\xilinx\fpga99\spi-rom.prm map: Sun Mar 27 15:59:09 2016
+PROM C:\fpga\spi-rom.prm map: Fri Apr 15 20:35:41 2016
 
 Calculating PROM checksum with fill value ff
 
@@ -11,7 +11,7 @@ Format        Mcs86 (32-bit)
 Size          8192K
 PROM start    0000:0000
 PROM end      007f:ffff
-PROM checksum 7a5907df
+PROM checksum 7a5a6524
 
         Addr1        Addr2                     Date File(s)
-    0000:0000    0005:327b     Mar 26 14:40:40 2016 C:/Users/Erik Piehl/Dropbox/Omat/trunk/projects/xilinx/fpga99/toplevel.bit
+    0000:0000    0005:327b     Apr 15 18:46:16 2016 C:/fpga/toplevel.bit
