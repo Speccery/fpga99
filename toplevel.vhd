@@ -87,7 +87,7 @@ ARCHITECTURE toplevel_architecture OF toplevel IS
 	constant spibase : std_logic_vector(15 downto 0) := x"FF30";	-- SPI controller
 
 	signal reset 		  	: std_logic;
-	signal reset_delay  	: std_logic_vector(7 downto 0) := x"00";
+	signal reset_delay  	: std_logic_vector(15 downto 0) := x"0000";
 	signal protect 		: std_logic;
 	signal mapen			: std_logic;
 	signal n_romen			: std_logic;
@@ -185,7 +185,7 @@ begin
 			-- Process reset here.
 			n_reset_out <= '0';
 			ready <= '0';
-			reset_delay <= x"00";
+			reset_delay <= (others => '0');
 			flag_reg <= x"00";
 			we_sync <= (others => '0');
 			nmi_sync <= (others => '1');
@@ -194,9 +194,9 @@ begin
 			spi_cs <= '1';
 		elsif rising_edge(CLK50M) then
 			-- take care of reset, enable zero wait states
-			n_reset_out <= reset_delay(7); -- this does not work: reset'length-1
-			ready 		<= reset_delay(5);
-			reset_delay <= reset_delay(6 downto 0) & '1';
+			n_reset_out <= reset_delay(8); 
+			ready 		<= reset_delay(15);
+			reset_delay <= reset_delay(14 downto 0) & '1';
 		
 			-- write to MMU
 			if selmmu = '1' and n_we = '0' then

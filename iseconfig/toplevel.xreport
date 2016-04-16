@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <report-views version="2.0" >
  <header>
-  <DateModified>2016-04-08T21:29:23</DateModified>
+  <DateModified>2016-04-15T18:29:31</DateModified>
   <ModuleName>toplevel</ModuleName>
   <SummaryTimeStamp>2016-04-08T19:53:12</SummaryTimeStamp>
-  <SavedFilePath>C:/Users/Erik Piehl/Dropbox/Omat/trunk/projects/xilinx/fpga99/iseconfig/toplevel.xreport</SavedFilePath>
-  <ImplementationReportsDirectory>C:/Users/Erik Piehl/Dropbox/Omat/trunk/projects/xilinx/fpga99\</ImplementationReportsDirectory>
+  <SavedFilePath>C:/fpga/iseconfig/toplevel.xreport</SavedFilePath>
+  <ImplementationReportsDirectory>C:/fpga\</ImplementationReportsDirectory>
   <DateInitialized>2016-02-07T16:35:12</DateInitialized>
   <EnableMessageFiltering>false</EnableMessageFiltering>
  </header>

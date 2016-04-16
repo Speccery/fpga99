@@ -2,7 +2,11 @@ Storage Target: SPI Flash Single FPGA
 64M
 FF
 spi-rom
-C:\Users\Erik Piehl\Dropbox\Omat\trunk\projects\xilinx\fpga99\
+C:\fpga/
+
+MCS
+No
+hl\Dropbox\Omat\trunk\projects\xilinx\fpga99\
 
 MCS
 No

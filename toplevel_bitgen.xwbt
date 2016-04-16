@@ -1,8 +1,8 @@
 INTSTYLE=ise
-INFILE=C:\Users\Erik Piehl\Dropbox\Omat\trunk\projects\xilinx\fpga99\toplevel.ncd
-OUTFILE=C:\Users\Erik Piehl\Dropbox\Omat\trunk\projects\xilinx\fpga99\toplevel.bit
+INFILE=C:\fpga\toplevel.ncd
+OUTFILE=C:\fpga\toplevel.bit
 FAMILY=Spartan6
 PART=xc6slx9-2tqg144
-WORKINGDIR=C:\Users\Erik Piehl\Dropbox\Omat\trunk\projects\xilinx\fpga99
+WORKINGDIR=C:\fpga
 LICENSE=WebPack
 USER_INFO=211059439_0_0_754

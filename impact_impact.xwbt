@@ -1,8 +1,8 @@
 INTSTYLE=impact
-INFILE=C:\Users\Erik Piehl\Dropbox\Omat\trunk\projects\xilinx\fpga99\impact.xsl
-OUTFILE=C:\Users\Erik Piehl\Dropbox\Omat\trunk\projects\xilinx\fpga99\impact.xsl
+INFILE=C:\fpga\impact.xsl
+OUTFILE=C:\fpga\impact.xsl
 FAMILY=Single
 PART=Single
-WORKINGDIR=C:\Users\Erik Piehl\Dropbox\Omat\trunk\projects\xilinx\fpga99
+WORKINGDIR=C:\fpga
 LICENSE=iMPACT
 USER_INFO=iMPACT
