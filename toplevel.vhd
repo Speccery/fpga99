@@ -5,7 +5,7 @@
 -- toplevel.vhd
 --
 -- Started 2016-03-23 (C) Erik Piehl
---
+-- Continued after a long pause 2018-05-01 to include Paul's TMS9902.
 
 
 -- Fix for windows 10, reminder how to get ISE 14.7 working on win 10.
@@ -31,6 +31,7 @@ use UNISIM.vcomponents.all; -- get xilinx ram
 
 entity toplevel is
 	generic (
+		real9902 : boolean := false;
 		awidth : integer := 8; 
 		aregs  : integer := 16
 	);
@@ -46,7 +47,7 @@ entity toplevel is
 -- Connections to TMS9995 board
 	n_RAMCE		: out std_logic;
 	n_ROMCE		: out std_logic;
-	CRUCLK		: out std_logic;
+	CRUCLK_OUT  : out std_logic;
 	n_CRU1		: out std_logic;
 	n_CRU2		: out std_logic;
 	
@@ -55,6 +56,8 @@ entity toplevel is
 	n_DBIN		: in std_logic;
 	ABUS			: in std_logic_vector(15 downto 0);
 	DBUS			: inout std_logic_vector(7 downto 0);
+	
+	CRUIN			: out STD_LOGIC;			-- output from PNR's TMS9902
 
 -- UART routing to FTDI chip
    RX02			: out std_logic;
@@ -124,9 +127,46 @@ ARCHITECTURE toplevel_architecture OF toplevel IS
 	
 	signal debug : std_logic_vector(7 downto 0);
 	
+	signal CRUCLK : std_logic;
+	
+-- TMS9902 by pnr	
+	component tms9902 is
+	port (
+		CLK      : in  std_logic;
+		nRTS     : out std_logic;
+		nDSR     : in  std_logic;
+		nCTS     : in  std_logic;
+		nINT     : out std_logic;
+		nCE      : in  std_logic;
+		CRUOUT   : in  std_logic;
+		CRUIN    : out std_logic;
+		CRUCLK   : in  std_logic;
+		XOUT     : out std_logic;
+		RIN      : in  std_logic;
+		S        : in  std_logic_vector(4 downto 0)
+		);
+	end component;	
+	
+	signal tms9902_cruin : std_logic;
+	signal tms9902_nCE   : std_logic;
+	signal tms9902_rts_cts : std_logic;
+	signal pnr9902_tx : std_logic;
+	signal pnr9902_rx : std_logic;
+	signal n_CRU1_internal : std_logic;
+	
 begin
-	TX <= TX02;
+
 	RX02 <= RX;
+	pnr9902_rx <= RX;
+
+	process(TX02, pnr9902_tx)
+	begin
+		if real9902 then
+			TX <= TX02;
+		else
+			TX <= pnr9902_tx;
+		end if;
+	end process;
 	
 	LED(0) <= not TX02;
 	LED(1) <= not RX;
@@ -135,7 +175,8 @@ begin
 	LED(7 DOWNTO 4) <= flag_reg(3 downto 0);
 	
 	-- External instruction decoding
-   cruclk      <= '1' when n_memen = '1' and n_we = '0' and dbus(7 downto 5) = "000" else '0';
+	CRUCLK_OUT  <= CRUCLK;
+   CRUCLK      <= '1' when n_memen = '1' and n_we = '0' and dbus(7 downto 5) = "000" else '0';
 	lrex 			<= '1' when n_memen = '1' and n_we = '0' and dbus(7 downto 5) = "111" else '0';
 	ckon 			<= '1' when n_memen = '1' and n_we = '0' and dbus(7 downto 5) = "101" else '0';
 	ckoff			<= '1' when n_memen = '1' and n_we = '0' and dbus(7 downto 5) = "110" else '0';
@@ -155,7 +196,7 @@ begin
 	n_ROMCE <= n_romce1;
 	
 	-- CRU bus: S4=A5 S3=A4 S2=A3 S1=A2 S0=A1 CRUOUT=A0
-   n_cru1      <= '0' when n_memen = '1' and abus(15 downto 6) = sel9902(15 downto 6) else '1';
+   n_cru1_internal <= '0' when n_memen = '1' and abus(15 downto 6) = sel9902(15 downto 6) else '1';
    n_cru2      <= '0' when n_memen = '1' and abus(15 downto 6) = sel9901(15 downto 6) else '1';
 	
 	mapen <= flag_reg(1);
@@ -274,6 +315,24 @@ begin
 		else debug when n_DBIN = '0' and selspi = '1' and abus(3 downto 0) = "0100"
 		else x"5A" when n_DBIN = '0' and seltest = '1'
 		else "ZZZZZZZZ";
+		
+		tms9902_nCE <= '1' when real9902 = True  else n_CRU1_internal;
+		n_CRU1 <=      '1' when real9902 = False else n_CRU1_internal;
+		
+pnr_tms9902 : tms9902 PORT MAP (
+		CLK 	=> CLK50M,
+		nRTS 	=> tms9902_rts_cts,  -- out
+		nDSR  => '0', 					-- in
+		nCTS  => tms9902_rts_cts,  -- in, driven by nRTS above
+		nINT  => open, 				-- out
+		nCE   => tms9902_nCE,		-- in
+		CRUOUT => abus(0), 			-- in
+		CRUIN  => CRUIN, 				-- out
+		CRUCLK => CRUCLK, 		   -- in
+		XOUT  => pnr9902_tx, 		-- out
+		RIN   => pnr9902_rx, 		-- in
+		S   	=> abus(5 downto 1)
+	);		
   
 end toplevel_architecture;
 	
